@@ -13,6 +13,7 @@
 -define('CMD_REMOVE',     6).
 -define('CMD_HTTP',       7).
 -define('CMD_N1QL',       8).
+-define('CMD_SD_GET',     9).
 
 -type handle() :: binary().
 

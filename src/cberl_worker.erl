@@ -120,6 +120,12 @@ handle_call({n1ql, Query, Params, Prepared, TranscoderOpts}, _From, State) ->
         {error, _} = E -> {false, E}
     end,
     {reply, Reply, State#instance{connected = Connected}};
+handle_call({sd_get, Key, Path}, _From, State) ->
+    {Connected, Reply} = case connect(State) of
+        ok -> {true, sd_get(Key, Path, State)};
+        {error, _} = E -> {false, E}
+    end,
+    {reply, Reply, State#instance{connected = Connected}};
 handle_call(bucketname, _From, State = #instance{bucketname = BucketName}) ->
     {reply, {ok, BucketName}, State};
 handle_call(_Request, _From, State) ->
@@ -205,8 +211,8 @@ unlock(Key, Cas, #instance{handle = Handle}) ->
 
 store(Op, Key, Value, TranscoderOpts, Exp, Cas,
       #instance{handle = Handle, transcoder = Transcoder}) ->
-    StoreValue = Transcoder:encode_value(TranscoderOpts, Value), 
-    ok = cberl_nif:control(Handle, op(store), [operation_value(Op), Key, StoreValue, 
+    StoreValue = Transcoder:encode_value(TranscoderOpts, Value),
+    ok = cberl_nif:control(Handle, op(store), [operation_value(Op), Key, StoreValue,
                            Transcoder:flag(TranscoderOpts), Exp, Cas]),
     receive
         Reply -> Reply
@@ -263,6 +269,24 @@ n1ql(Query, Params, Prepared, TranscoderOpts, #instance{handle = Handle, transco
             {ok, Meta, Data}
     end.
 
+sd_get(Key, Path, #instance{handle = Handle, transcoder = Transcoder}) ->
+    ok = cberl_nif:control(Handle, op(sd_get), [Key, Path]),
+    receive
+        ok -> io:fwrite("success~n"), [];
+        {error, Error} -> {error, Error};
+        {ok, Results} ->
+            lists:map(fun(Result) ->
+                        case Result of
+                            {Cas, Flag, Key, Value} ->
+                                DecodedValue = Transcoder:decode_value(Flag, Value),
+                                {Key, Cas, DecodedValue};
+                            {_Key, {error, _Error}} ->
+                                Result
+                        end
+                end, Results)
+    end.
+
+
 -spec operation_value(operation_type()) -> integer().
 operation_value(add) -> ?'CBE_ADD';
 operation_value(replace) -> ?'CBE_REPLACE';
@@ -279,7 +303,8 @@ op(mtouch) -> ?'CMD_MTOUCH';
 op(arithmetic) -> ?'CMD_ARITHMETIC';
 op(remove) -> ?'CMD_REMOVE';
 op(http) -> ?'CMD_HTTP';
-op(n1ql) -> ?'CMD_N1QL'.
+op(n1ql) -> ?'CMD_N1QL';
+op(sd_get) -> ?'CMD_SD_GET'.
 
 -spec canonical_bucket_name(string()) -> string().
 canonical_bucket_name(Name) ->

@@ -46,6 +46,8 @@ NIF(cberl_nif_new)
     handle->args_calltable[CMD_HTTP]       = cb_http_args;
     handle->calltable[CMD_N1QL]            = cb_n1ql;
     handle->args_calltable[CMD_N1QL]       = cb_n1ql_args;
+    handle->calltable[CMD_SD_GET]         = cb_sd_get;
+    handle->args_calltable[CMD_SD_GET]    = cb_sd_get_args;
 
     handle->thread_opts = enif_thread_opts_create("thread_opts");
 
@@ -115,13 +117,13 @@ NIF(cberl_nif_control)
 NIF(cberl_nif_destroy) {
     handle_t * handle;
     void* resp;
-    assert_badarg(enif_get_resource(env, argv[0], cberl_handle, (void **) &handle), env);      
+    assert_badarg(enif_get_resource(env, argv[0], cberl_handle, (void **) &handle), env);
     queue_put(handle->queue, NULL); // push NULL into our queue so the thread will join
     enif_thread_join(handle->thread, &resp);
     queue_destroy(handle->queue);
     enif_thread_opts_destroy(handle->thread_opts);
     lcb_destroy(handle->instance);
-    enif_release_resource(handle); 
+    enif_release_resource(handle);
     return A_OK(env);
 }
 

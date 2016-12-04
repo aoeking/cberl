@@ -18,7 +18,7 @@
 %% retrieval operations
 -export([get_and_touch/3, get_and_lock/3, mget/2, get/2, unlock/3,
          mget/3, getl/3, http/6, view/4, foldl/3, foldr/3, foreach/2,
-         n1ql/4, n1ql/5]).
+         n1ql/4, n1ql/5, sd_get/3]).
 %% removal operations
 -export([remove/2, flush/1, flush/2]).
 %% design doc opertations
@@ -28,15 +28,15 @@
 
 %% @equiv start_link(PoolName, NumCon, "localhost:8091", "", "", "")
 start_link(PoolName, NumCon) ->
-    start_link(PoolName, NumCon, "localhost:8091", "", "", "").
+    start_link(PoolName, NumCon, "localhost:8091", "", "", "default").
 
-%% @equiv start_link(PoolName, NumCon, Host, "", "", "")
+%% @equiv start_link(PoolName, NumCon, Host, "", "", "default")
 start_link(PoolName, NumCon, Host) ->
-    start_link(PoolName, NumCon, Host, "", "", "").
+    start_link(PoolName, NumCon, Host, "", "", "default").
 
-%% @equiv start_link(PoolName, NumCon, Host, Username, Password, "")
+%% @equiv start_link(PoolName, NumCon, Host, Username, Password, "default")
 start_link(PoolName, NumCon, Host, Username, Password) ->
-    start_link(PoolName, NumCon, Host, Username, Password, "").
+    start_link(PoolName, NumCon, Host, Username, Password, "default").
 
 %% @doc Create an instance of libcouchbase
 %% hosts A list of hosts:port separated by ';' to the
@@ -354,6 +354,10 @@ n1ql(PoolPid, Query, Params, Prepared, TranscoderOpts) when is_binary(Query), is
                         _ -> throw(invalid_flag)
                     end,
     execute(PoolPid, {n1ql, Query, Params, PreparedValue, TranscoderOpts}).
+
+-spec sd_get(pid(), key(), binary()) -> list().
+sd_get(PoolPid, Key, Path) ->
+    execute(PoolPid, {sd_get, Key, Path}).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% DESIGN DOCUMENT MANAGMENT %%%

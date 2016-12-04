@@ -49,7 +49,7 @@ typedef struct arithmetic_args {
     int64_t delta;
     uint64_t exp;
     int create;
-    uint64_t initial; 
+    uint64_t initial;
 } arithmetic_args_t;
 
 typedef struct remove_args_t {
@@ -76,11 +76,18 @@ typedef struct n1ql_args {
 } n1ql_args_t;
 
 typedef struct n1ql_param {
-	char *parameter;
-	char *value;
-	unsigned int nparameter;
-	unsigned int nvalue;
+    char *parameter;
+    char *value;
+    unsigned int nparameter;
+    unsigned int nvalue;
 } n1ql_param_t;
+
+typedef struct sd_get_args {
+    char *key;
+    char *path;
+    unsigned int nkey;
+    unsigned int npath;
+} sd_get_args_t;
 
 void* cb_connect_args(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM cb_connect(ErlNifEnv* env, handle_t* handle, void* obj);
@@ -100,6 +107,9 @@ void* cb_http_args(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM cb_http(ErlNifEnv* env, handle_t* handle, void* obj);
 void* cb_n1ql_args(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM cb_n1ql(ErlNifEnv* env, handle_t* handle, void* obj);
+void* cb_sd_get_args(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM cb_sd_get(ErlNifEnv* env, handle_t* handle, void* obj);
+
 
 ERL_NIF_TERM return_lcb_error(ErlNifEnv* env, int const value);
 ERL_NIF_TERM return_value(ErlNifEnv* env, void * cookie);

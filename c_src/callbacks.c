@@ -2,6 +2,7 @@
 #include <string.h>
 #include <libcouchbase/couchbase.h>
 #include <libcouchbase/n1ql.h>
+#include <libcouchbase/api3.h>
 #include "erl_nif.h"
 #include "callbacks.h"
 
@@ -138,5 +139,35 @@ void n1ql_callback(lcb_t instance,
         cb->meta->data = malloc(resp->nrow);
         cb->meta->size = resp->nrow;
         memcpy(cb->meta->data, resp->row, resp->nrow);
+    }
+}
+
+void sd_get_callback(lcb_t instance,
+                     int type,
+                     const lcb_RESPBASE *rb)
+{
+    printf("Got callback for %s\n", lcb_strcbtype(type));
+
+    if (rb->rc != LCB_SUCCESS && rb->rc != LCB_SUBDOC_MULTI_FAILURE) {
+        printf("Failure: 0x%x\n", rb->rc);
+        return;
+    }
+
+    if (type == LCB_CALLBACK_GET) {
+        const lcb_RESPGET *rg = (const lcb_RESPGET *)rb;
+        printf("Result is: %.*s\n", (int)rg->nvalue, rg->value);
+    } else if (type == LCB_CALLBACK_SDLOOKUP || type == LCB_CALLBACK_SDMUTATE) {
+        lcb_SDENTRY ent;
+        size_t iter = 0;
+        size_t oix = 0;
+        const lcb_RESPSUBDOC *resp = (lcb_RESPSUBDOC*)rb;
+        while (lcb_sdresult_next(resp, &ent, &iter)) {
+            size_t index = oix++;
+            if (type == LCB_CALLBACK_SDMUTATE) {
+                index = ent.index;
+            }
+            printf("element value :- [%lu]: 0x%x. %.*s\n",
+                   index, ent.status, (int)ent.nvalue, ent.value);
+        }
     }
 }
