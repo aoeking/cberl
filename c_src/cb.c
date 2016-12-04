@@ -89,7 +89,6 @@ ERL_NIF_TERM cb_connect(ErlNifEnv* env, handle_t* handle, void* obj)
     (void)lcb_set_arithmetic_callback(handle->instance, arithmetic_callback);
     (void)lcb_set_remove_callback(handle->instance, remove_callback);
     (void)lcb_set_http_complete_callback(handle->instance, http_callback);
-    (void)lcb_install_callback3(handle->instance, LCB_CALLBACK_DEFAULT, sd_get_callback);
 
     err = lcb_connect(handle->instance);
 
@@ -367,6 +366,7 @@ ERL_NIF_TERM cb_sd_get(ErlNifEnv* env, handle_t* handle, void* obj)
 {
     sd_get_args_t* args = (sd_get_args_t*)obj;
     struct libcouchbase_callback_m cb;
+    lcb_install_callback3(handle->instance, LCB_CALLBACK_DEFAULT, generic_callback);
 
     lcb_error_t ret;
     lcb_CMDSUBDOC cmd;
@@ -374,6 +374,7 @@ ERL_NIF_TERM cb_sd_get(ErlNifEnv* env, handle_t* handle, void* obj)
     memset(&spec, 0, sizeof spec);
     memset(&cmd, 0, sizeof cmd);
 
+    printf("key %s path %s\n", args->key, args->path);
     spec.sdcmd = LCB_SDCMD_GET;
     LCB_CMD_SET_KEY(&cmd, args->key, args->nkey);
     cmd.specs = &spec;
