@@ -6,13 +6,36 @@
 #include "erl_nif.h"
 #include "callbacks.h"
 
+void api3_get_callback(lcb_t instance,
+                     int type,
+                     const lcb_RESPBASE *rb)
+{
+    struct libcouchbase_callback_m *cbm;
+    cbm = (struct libcouchbase_callback_m *) ((lcb_RESPBASE *)rb)->cookie;
+    const lcb_RESPGET *resp = (const lcb_RESPGET *)rb;
+    cbm->ret[cbm->currKey] = malloc(sizeof(struct libcouchbase_callback));
+    cbm->ret[cbm->currKey]->key = malloc(resp->nkey);
+    memcpy(cbm->ret[cbm->currKey]->key, resp->key, resp->nkey);
+    cbm->ret[cbm->currKey]->nkey = resp->nkey;
+    cbm->ret[cbm->currKey]->error = resp->rc;
+    cbm->ret[cbm->currKey]->flag = resp->itmflags == 0 ? 1 : resp->itmflags;
+    cbm->ret[cbm->currKey]->cas = resp->cas;
+    if (resp->nvalue > 0) {
+        printf("Result is: %.*s\r\n", (int)resp->nvalue, resp->value);
+        cbm->ret[cbm->currKey]->data = malloc(resp->nvalue);
+        memcpy(cbm->ret[cbm->currKey]->data, resp->value, resp->nvalue);
+        cbm->ret[cbm->currKey]->size = resp->nvalue;
+    }
+    cbm->currKey += 1;
+}
+
 void get_callback(lcb_t instance,
-                  const void *cookie,
+                   const void *cookie,
                   lcb_error_t error,
                   const lcb_get_resp_t *item)
 {
     struct libcouchbase_callback_m *cbm;
-    cbm = (struct libcouchbase_callback_m *)cookie;
+    cbm = (struct libcouchbase_callback_m *) cookie;
     cbm->ret[cbm->currKey] = malloc(sizeof(struct libcouchbase_callback));
     cbm->ret[cbm->currKey]->key = malloc(item->v.v0.nkey);
     memcpy(cbm->ret[cbm->currKey]->key, item->v.v0.key, item->v.v0.nkey);
@@ -142,9 +165,9 @@ void n1ql_callback(lcb_t instance,
     }
 }
 
-void sd_get_callback(lcb_t instance,
-                     int type,
-                     const lcb_RESPBASE *rb)
+void api3_subdoc_get_callback(lcb_t instance,
+                              int type,
+                              const lcb_RESPBASE *rb)
 {
     printf("Got callback for %s\n", lcb_strcbtype(type));
 

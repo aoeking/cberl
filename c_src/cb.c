@@ -82,7 +82,9 @@ ERL_NIF_TERM cb_connect(ErlNifEnv* env, handle_t* handle, void* obj)
                 enif_make_string(env, lcb_strerror(NULL, err), ERL_NIF_LATIN1));
     }
 
-    (void)lcb_set_get_callback(handle->instance, get_callback);
+    (void)lcb_install_callback3(handle->instance, LCB_CALLBACK_GET, api3_get_callback);
+    (void)lcb_install_callback3(handle->instance, LCB_CALLBACK_SDLOOKUP, api3_subdoc_get_callback);
+    //(void)lcb_set_get_callback(handle->instance, get_callback);
     (void)lcb_set_store_callback(handle->instance, store_callback);
     (void)lcb_set_unlock_callback(handle->instance, unlock_callback);
     (void)lcb_set_touch_callback(handle->instance, touch_callback);
@@ -308,7 +310,7 @@ ERL_NIF_TERM cb_mget(ErlNifEnv* env, handle_t* handle, void* obj)
 
 static void generic_callback(lcb_t t, int type, const lcb_RESPBASE *rb)
 {
-    printf("Got callback for %s\n", lcb_strcbtype(type));
+    printf("Got callback for subdoc3  %s\n", lcb_strcbtype(type));
 
     if (rb->rc != LCB_SUCCESS && rb->rc != LCB_SUBDOC_MULTI_FAILURE) {
         printf("Failure: 0x%x\n", rb->rc);
@@ -366,19 +368,14 @@ ERL_NIF_TERM cb_sd_get(ErlNifEnv* env, handle_t* handle, void* obj)
 {
     sd_get_args_t* args = (sd_get_args_t*)obj;
     struct libcouchbase_callback_m cb;
-    lcb_install_callback3(handle->instance, LCB_CALLBACK_DEFAULT, generic_callback);
-
     lcb_error_t ret;
-    lcb_CMDSUBDOC cmd;
-    lcb_SDSPEC spec;
-    memset(&spec, 0, sizeof spec);
-    memset(&cmd, 0, sizeof cmd);
+    lcb_CMDSUBDOC cmd = {0};
+    lcb_SDSPEC spec = {0};
 
-    printf("key %s path %s\n", args->key, args->path);
-    spec.sdcmd = LCB_SDCMD_GET;
     LCB_CMD_SET_KEY(&cmd, args->key, args->nkey);
     cmd.specs = &spec;
     cmd.nspecs = 1;
+    spec.sdcmd = LCB_SDCMD_GET;
     LCB_SDSPEC_SET_PATH(&spec, args->path, args->npath);
     ret = lcb_subdoc3(handle->instance, &cb, &cmd);
 
