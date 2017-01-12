@@ -1,33 +1,10 @@
+#ifndef API3
 #include <stdio.h>
 #include <string.h>
 #include <libcouchbase/couchbase.h>
 #include <libcouchbase/n1ql.h>
-#include <libcouchbase/api3.h>
 #include "erl_nif.h"
 #include "callbacks.h"
-
-void api3_get_callback(lcb_t instance,
-                     int type,
-                     const lcb_RESPBASE *rb)
-{
-    struct libcouchbase_callback_m *cbm;
-    cbm = (struct libcouchbase_callback_m *) ((lcb_RESPBASE *)rb)->cookie;
-    const lcb_RESPGET *resp = (const lcb_RESPGET *)rb;
-    cbm->ret[cbm->currKey] = malloc(sizeof(struct libcouchbase_callback));
-    cbm->ret[cbm->currKey]->key = malloc(resp->nkey);
-    memcpy(cbm->ret[cbm->currKey]->key, resp->key, resp->nkey);
-    cbm->ret[cbm->currKey]->nkey = resp->nkey;
-    cbm->ret[cbm->currKey]->error = resp->rc;
-    cbm->ret[cbm->currKey]->flag = resp->itmflags == 0 ? 1 : resp->itmflags;
-    cbm->ret[cbm->currKey]->cas = resp->cas;
-    if (resp->nvalue > 0) {
-        printf("Result is: %.*s\r\n", (int)resp->nvalue, resp->value);
-        cbm->ret[cbm->currKey]->data = malloc(resp->nvalue);
-        memcpy(cbm->ret[cbm->currKey]->data, resp->value, resp->nvalue);
-        cbm->ret[cbm->currKey]->size = resp->nvalue;
-    }
-    cbm->currKey += 1;
-}
 
 void get_callback(lcb_t instance,
                    const void *cookie,
@@ -164,33 +141,4 @@ void n1ql_callback(lcb_t instance,
         memcpy(cb->meta->data, resp->row, resp->nrow);
     }
 }
-
-void api3_subdoc_get_callback(lcb_t instance,
-                              int type,
-                              const lcb_RESPBASE *rb)
-{
-    printf("Got callback for %s\n", lcb_strcbtype(type));
-
-    if (rb->rc != LCB_SUCCESS && rb->rc != LCB_SUBDOC_MULTI_FAILURE) {
-        printf("Failure: 0x%x\n", rb->rc);
-        return;
-    }
-
-    if (type == LCB_CALLBACK_GET) {
-        const lcb_RESPGET *rg = (const lcb_RESPGET *)rb;
-        printf("Result is: %.*s\n", (int)rg->nvalue, rg->value);
-    } else if (type == LCB_CALLBACK_SDLOOKUP || type == LCB_CALLBACK_SDMUTATE) {
-        lcb_SDENTRY ent;
-        size_t iter = 0;
-        size_t oix = 0;
-        const lcb_RESPSUBDOC *resp = (lcb_RESPSUBDOC*)rb;
-        while (lcb_sdresult_next(resp, &ent, &iter)) {
-            size_t index = oix++;
-            if (type == LCB_CALLBACK_SDMUTATE) {
-                index = ent.index;
-            }
-            printf("element value :- [%lu]: 0x%x. %.*s\n",
-                   index, ent.status, (int)ent.nvalue, ent.value);
-        }
-    }
-}
+#endif

@@ -4,7 +4,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef API3
+#include "callbacks_api3.h"
+#else
 #include "callbacks.h"
+#endif
+
 #include "cb.h"
 
 void *cb_connect_args(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
@@ -82,15 +88,23 @@ ERL_NIF_TERM cb_connect(ErlNifEnv* env, handle_t* handle, void* obj)
                 enif_make_string(env, lcb_strerror(NULL, err), ERL_NIF_LATIN1));
     }
 
-    (void)lcb_install_callback3(handle->instance, LCB_CALLBACK_GET, api3_get_callback);
-    (void)lcb_install_callback3(handle->instance, LCB_CALLBACK_SDLOOKUP, api3_subdoc_get_callback);
-    //(void)lcb_set_get_callback(handle->instance, get_callback);
+#ifdef API3
+    (void)lcb_install_callback3(handle->instance, LCB_CALLBACK_GET, get_callback);
+    (void)lcb_install_callback3(handle->instance, LCB_CALLBACK_STORE, store_callback);
+    (void)lcb_install_callback3(handle->instance, LCB_CALLBACK_UNLOCK, unlock_callback);
+    (void)lcb_install_callback3(handle->instance, LCB_CALLBACK_REMOVE, remove_callback);
+    (void)lcb_install_callback3(handle->instance, LCB_CALLBACK_TOUCH, touch_callback);
+    (void)lcb_install_callback3(handle->instance, LCB_CALLBACK_COUNTER, counter_callback);
+    (void)lcb_install_callback3(handle->instance, LCB_CALLBACK_HTTP, http_callback);
+#else
+    (void)lcb_set_get_callback(handle->instance, get_callback);
     (void)lcb_set_store_callback(handle->instance, store_callback);
     (void)lcb_set_unlock_callback(handle->instance, unlock_callback);
     (void)lcb_set_touch_callback(handle->instance, touch_callback);
     (void)lcb_set_arithmetic_callback(handle->instance, arithmetic_callback);
     (void)lcb_set_remove_callback(handle->instance, remove_callback);
     (void)lcb_set_http_complete_callback(handle->instance, http_callback);
+#endif
 
     err = lcb_connect(handle->instance);
 
@@ -308,88 +322,9 @@ ERL_NIF_TERM cb_mget(ErlNifEnv* env, handle_t* handle, void* obj)
     return enif_make_tuple2(env, A_OK(env), returnValue);
 }
 
-static void generic_callback(lcb_t t, int type, const lcb_RESPBASE *rb)
-{
-    printf("Got callback for subdoc3  %s\n", lcb_strcbtype(type));
-
-    if (rb->rc != LCB_SUCCESS && rb->rc != LCB_SUBDOC_MULTI_FAILURE) {
-        printf("Failure: 0x%x\n", rb->rc);
-        return;
-    }
-
-    if (type == LCB_CALLBACK_GET) {
-        const lcb_RESPGET *rg = (const lcb_RESPGET *)rb;
-        printf("Result is: %.*s\n", (int)rg->nvalue, rg->value);
-    } else if (type == LCB_CALLBACK_SDLOOKUP || type == LCB_CALLBACK_SDMUTATE) {
-        lcb_SDENTRY ent;
-        size_t iter = 0;
-        size_t oix = 0;
-        const lcb_RESPSUBDOC *resp = (lcb_RESPSUBDOC*)rb;
-        while (lcb_sdresult_next(resp, &ent, &iter)) {
-            size_t index = oix++;
-            if (type == LCB_CALLBACK_SDMUTATE) {
-                index = ent.index;
-            }
-            printf("element value :- [%lu]: 0x%x. %.*s\n",
-                   index, ent.status, (int)ent.nvalue, ent.value);
-        }
-    }
-}
-
-void* cb_sd_get_args(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
-{
-    sd_get_args_t* args = (sd_get_args_t*)enif_alloc(sizeof(sd_get_args_t));
-    ErlNifBinary key_binary;
-    ErlNifBinary path_binary;
-
-    if (!enif_inspect_iolist_as_binary(env, argv[0], &key_binary)) goto error0;
-    args->key = malloc(sizeof(char) * (key_binary.size + 1));
-    memset(args->key, 0, key_binary.size + 1);
-    memcpy(args->key, key_binary.data, key_binary.size);
-    args->nkey = key_binary.size;
-
-    if (!enif_inspect_iolist_as_binary(env, argv[1], &path_binary)) goto error1;
-    args->path = malloc(sizeof(char) * (path_binary.size + 1));
-    memset(args->path, 0, path_binary.size + 1);
-    memcpy(args->path, path_binary.data, path_binary.size);
-    args->npath = path_binary.size;
-    return (void*)args;
-
-    error1:
-    free(args->key);
-    enif_free(args);
-    error0:
-    enif_free(args);
-
-    return NULL;
-}
-
-ERL_NIF_TERM cb_sd_get(ErlNifEnv* env, handle_t* handle, void* obj)
-{
-    sd_get_args_t* args = (sd_get_args_t*)obj;
-    struct libcouchbase_callback_m cb;
-    lcb_error_t ret;
-    lcb_CMDSUBDOC cmd = {0};
-    lcb_SDSPEC spec = {0};
-
-    LCB_CMD_SET_KEY(&cmd, args->key, args->nkey);
-    cmd.specs = &spec;
-    cmd.nspecs = 1;
-    spec.sdcmd = LCB_SDCMD_GET;
-    LCB_SDSPEC_SET_PATH(&spec, args->path, args->npath);
-    ret = lcb_subdoc3(handle->instance, &cb, &cmd);
-
-    if (ret != LCB_SUCCESS)
-        return return_lcb_error(env, ret);
-    lcb_wait(handle->instance);
-    return A_OK(env);
-}
-
-
 void* cb_unlock_args(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     unlock_args_t* args = (unlock_args_t*)enif_alloc(sizeof(unlock_args_t));
-
     ErlNifBinary key_binary;
 
     if (!enif_inspect_iolist_as_binary(env, argv[0], &key_binary)) goto error0;

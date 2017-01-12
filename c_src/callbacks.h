@@ -68,15 +68,4 @@ void http_callback(lcb_http_request_t request,
 void n1ql_callback(lcb_t instance,
                    int cbtype,
                    const lcb_RESPN1QL *resp);
-
-void sd_get_callback(lcb_t instance,
-                     int type,
-                     const lcb_RESPBASE *resp);
-void api3_get_callback(lcb_t instance,
-                       int type,
-                       const lcb_RESPBASE *rb);
-void api3_subdoc_get_callback(lcb_t instance,
-                          int type,
-                          const lcb_RESPBASE *rb);
-
 #endif
